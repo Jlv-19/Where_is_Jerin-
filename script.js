@@ -104,8 +104,11 @@ tr.innerHTML=`
 
 body.appendChild(tr);
 
-});
-
 }
-
+function updateTime() {
+  const now = new Date();
+  document.getElementById("time").innerText =
+    "Last updated: " + now.toLocaleTimeString();
+}
+               
 });

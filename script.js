@@ -1,114 +1,141 @@
-const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtlqew4y-ItcDKx2kA6Ua1RDh-2PlT6XmY4yCKDeCBuzUlruW27SE_nXEWUF62la36h0tZFa8ln63r/pub?output=csv";
+const API_URL = "PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE";
 
-fetch(SHEET_URL)
-.then(r=>r.text())
-.then(data=>{
+async function loadData() {
+    try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
 
-const rows=data.split("\n").slice(1);
+        if (document.getElementById("today")) {
+            processDashboard(data);
+            showSummary(data);
+            updateLastUpdated();
+        }
 
-const visits=rows.map(r=>{
-const c=r.split(",");
-return{
-date:c[0],
-society:c[1],
-shift:c[2],
-status:c[3]
-}
-});
+        if (document.getElementById("history")) {
+            loadHistory(data);
+        }
 
-function format(d){
-return d.toISOString().split("T")[0];
-}
-
-const today=new Date();
-const yesterday=new Date();
-const tomorrow=new Date();
-
-yesterday.setDate(today.getDate()-1);
-tomorrow.setDate(today.getDate()+1);
-
-function getVisit(date){
-return visits.find(v=>v.date==date);
+    } catch (err) {
+        console.error(err);
+        document.body.innerHTML = "Error loading data";
+    }
 }
 
-function countVisits(society){
-return visits.filter(v=>v.society==society).length;
+// Normalize date
+function normalizeDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toISOString().split("T")[0];
 }
 
-function lastVisitDays(society,currentDate){
-
-const filtered=visits
-.filter(v=>v.society==society && v.date<currentDate)
-.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-if(filtered.length==0) return "First visit";
-
-const last=new Date(filtered[0].date);
-const cur=new Date(currentDate);
-
-return Math.floor((cur-last)/(1000*60*60*24));
+// Format date
+function formatDate(d) {
+    return d.toISOString().split("T")[0];
 }
 
-function render(id,label,date){
+// Dashboard
+function processDashboard(data) {
+    const today = new Date();
 
-const v=getVisit(date);
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
 
-if(!v){
-document.getElementById(id).innerHTML=`<b>${label}</b><br>No visit`;
-return;
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    renderCard("yesterday", data, formatDate(yesterday));
+    renderCard("today", data, formatDate(today));
+    renderCard("tomorrow", data, formatDate(tomorrow));
 }
 
-let stats="";
+function renderCard(id, data, date) {
+    const container = document.getElementById(id);
 
-if(v.status=="Field"){
+    const filtered = data.filter(d => normalizeDate(d.Date) === date);
 
-stats=`
-<div class="stat">
-Total Visits: ${countVisits(v.society)}<br>
-Days Since Last Visit: ${lastVisitDays(v.society,v.date)}
-</div>
-`;
+    const dayName = new Date(date).toLocaleDateString(undefined, { weekday: 'long' });
+
+    container.innerHTML = `<h3>${dayName}</h3>`;
+
+    if (filtered.length === 0) {
+        container.innerHTML += `<p>No visits</p>`;
+        return;
+    }
+
+    filtered.sort((a, b) => a.Shift.localeCompare(b.Shift));
+
+    filtered.forEach(item => {
+        const lastVisit = getLastVisitDays(data, item.Society, date);
+        const totalVisits = getVisitCount(data, item.Society);
+
+        container.innerHTML += `
+            <div class="card ${item.Shift.toLowerCase()}">
+                <strong>${item.Society}</strong>
+                <span class="badge ${item.Status.toLowerCase()}">${item.Status}</span>
+                <div class="stat">Shift: ${item.Shift}</div>
+                <div class="stat">Last visit: ${lastVisit}</div>
+                <div class="stat">Total visits: ${totalVisits}</div>
+            </div>
+        `;
+    });
 }
 
-document.getElementById(id).innerHTML=`
-<h3>${label}</h3>
-<b>${v.society}</b><br>
-Shift: ${v.shift}<br>
-Status: <span class="badge ${v.status.toLowerCase()}">${v.status}</span>
-${stats}
-`;
+// History page
+function loadHistory(data) {
+    const container = document.getElementById("history");
+
+    data.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+    data.forEach(item => {
+        container.innerHTML += `
+            <div class="card">
+                <strong>${item.Society}</strong>
+                <div>${normalizeDate(item.Date)}</div>
+                <div>Shift: ${item.Shift}</div>
+                <div class="badge ${item.Status.toLowerCase()}">${item.Status}</div>
+            </div>
+        `;
+    });
 }
 
-if(document.getElementById("today")){
-
-render("yesterday","Yesterday",format(yesterday));
-render("today","Today",format(today));
-render("tomorrow","Tomorrow",format(tomorrow));
-
+// Helpers
+function getVisitCount(data, society) {
+    return data.filter(d => d.Society === society).length;
 }
 
-if(document.querySelector("#table")){
+function getLastVisitDays(data, society, currentDate) {
+    const past = data
+        .filter(d => d.Society === society && normalizeDate(d.Date) < currentDate)
+        .sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
-const body=document.querySelector("#table tbody");
+    if (past.length === 0) return "First visit";
 
-visits.forEach(v=>{
+    const last = new Date(past[0].Date);
+    const current = new Date(currentDate);
 
-const tr=document.createElement("tr");
-
-tr.innerHTML=`
-<td>${v.date}</td>
-<td>${v.society}</td>
-<td>${v.shift}</td>
-<td>${v.status}</td>
-`;
-
-body.appendChild(tr);
-
+    const diff = Math.floor((current - last) / (1000 * 60 * 60 * 24));
+    return diff + " days ago";
 }
-function updateTime() {
-  const now = new Date();
-  document.getElementById("time").innerText =
-    "Last updated: " + now.toLocaleTimeString();
+
+function showSummary(data) {
+    const total = data.length;
+    const societies = new Set(data.map(d => d.Society)).size;
+
+    document.getElementById("summary").innerHTML = `
+        <strong>Total Visits:</strong> ${total} <br>
+        <strong>Societies:</strong> ${societies}
+    `;
 }
-               
-});
+
+function updateLastUpdated() {
+    const now = new Date();
+
+    const formatted = now.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+    });
+
+    document.getElementById("time").innerText =
+        "Last synced: " + formatted;
+}
+
+loadData();

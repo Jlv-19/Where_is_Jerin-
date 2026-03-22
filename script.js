@@ -1,4 +1,4 @@
-const API_URL = "PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE";
+const API_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRtlqew4y-ItcDKx2kA6Ua1RDh-2PlT6XmY4yCKDeCBuzUlruW27SE_nXEWUF62la36h0tZFa8ln63r/pub?output=csv";
 
 async function loadData() {
     try {

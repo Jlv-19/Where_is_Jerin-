@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <title>Field Visit Dashboard</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -9,9 +10,9 @@
 
 <div class="container">
 
-<div class="header">
-Field Visit Dashboard
-</div>
+<div class="header">Field Visit Dashboard</div>
+
+<div id="summary" class="card"></div>
 
 <div id="yesterday" class="card"></div>
 <div id="today" class="card today"></div>
@@ -20,11 +21,14 @@ Field Visit Dashboard
 <div class="nav">
 <a href="history.html">View Visit History →</a>
 </div>
+
 <div class="card">
-<p id="time">Last updated: --</p>
+<p id="time">Last synced: --</p>
 </div>
 
-<script src="script.js"></script>
+</div>
+
+<script src="script.js" defer></script>
 
 </body>
 </html>
